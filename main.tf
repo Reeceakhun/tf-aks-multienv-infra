@@ -37,3 +37,21 @@ resource "azurerm_kubernetes_cluster" "main" {
     ]
   }
 }
+
+resource "azurerm_kubernetes_cluster_node_pool" "workloads" {
+  name                  = "workloads"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
+  vm_size                = var.node_vm_size
+  node_count             = var.node_count
+
+  tags = {
+    environment = var.environment
+    managed-by  = "terraform"
+  }
+
+  lifecycle {
+    ignore_changes = [
+      node_count,
+    ]
+  }
+}
