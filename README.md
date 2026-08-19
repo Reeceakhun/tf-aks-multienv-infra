@@ -61,6 +61,18 @@ tf-aks-multienv-infra/
   one, using the same tfvars mechanism that already controls node sizing.
 - **A dedicated App Registration for this repo's OIDC**
 
+## CI Pipeline
+
+`.github/workflows/terraform-ci.yml` runs on every push and pull request
+against `master`.
+
+**`security-scan`** — runs [tfsec](https://github.com/aquasecurity/tfsec)
+against all `.tf` files with `soft_fail: false`, meaning a high-severity
+finding fails the check and blocks a merge under branch protection — a
+gate, not just a report. Runs on PRs specifically so misconfigurations are
+caught before code lands on `master`, not after.
+
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
