@@ -130,3 +130,6 @@ the intended path, not a local `apply` against prod.
   only, where the diff range correctly includes the actual changed
   commits. Confirmed the fix by re-testing with a fake secret through a
   fresh PR.
+  Re-verified with a fresh test PR: `secrets-scan` correctly failed on the
+  PR containing a planted secret, and correctly showed as skipped (not a
+  hollow pass) on the subsequent merge to `master`.
