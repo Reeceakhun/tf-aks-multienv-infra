@@ -72,6 +72,12 @@ finding fails the check and blocks a merge under branch protection — a
 gate, not just a report. Runs on PRs specifically so misconfigurations are
 caught before code lands on `master`, not after.
 
+**`secrets-scan`** — runs [gitleaks](https://github.com/gitleaks/gitleaks)
+against commit history, restricted to `pull_request` events only. This
+restriction is deliberate, not a simplification — see Notes below for why
+a `push`-triggered version of this check turned out to be a silent no-op
+on merge commits.
+
 
 ## Running locally
 
@@ -91,9 +97,6 @@ the intended path, not a local `apply` against prod.
 
 ## Roadmap
 
-- [ ] Wire the remote backend into `provider.tf` (currently using local
-      state while core resources were being built)
-- [ ] Add tfsec and gitleaks as required CI checks
 - [ ] Add a GitHub Actions plan/apply workflow, parameterized by environment
 - [ ] Add Infracost cost estimation as a PR check
 - [ ] Add GitHub Environments with required reviewers before staging/prod apply
@@ -112,3 +115,18 @@ the intended path, not a local `apply` against prod.
   variables existed but before any `.tfvars` file did. Not a bug; resolved
   by adding the `.tfvars` files so `-var-file` makes every plan
   non-interactive going forward.
+- **gitleaks passed cleanly on a merge commit despite a known secret being
+  present in the merged code.** Verified this wasn't a false negative by
+  first confirming detection worked correctly on the originating PR (it
+  did — `1 leaks found`, correctly flagged). The gap was specific to the
+  `push`-triggered run: `gitleaks-action` runs `git log` with `--no-merges`
+  by default, and computes its scan range as "previous branch tip → new
+  branch tip." For a non-fast-forward PR merge, that range is exactly one
+  commit — the merge commit itself — which `--no-merges` then excludes
+  entirely, leaving zero commits scanned. The check still reported
+  "success," which is the concerning part: a passing check that scanned
+  nothing is more dangerous than a missing check, since it creates false
+  confidence. Fixed by restricting `secrets-scan` to `pull_request` events
+  only, where the diff range correctly includes the actual changed
+  commits. Confirmed the fix by re-testing with a fake secret through a
+  fresh PR.

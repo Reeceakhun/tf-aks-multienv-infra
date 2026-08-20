@@ -18,6 +18,7 @@ jobs:
           soft_fail: false
   
   secrets-scan:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
