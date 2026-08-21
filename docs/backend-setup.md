@@ -37,8 +37,13 @@ az ad app create --display-name "tf-aks-multienv-infra-github"
 az ad sp create --id <appId>
 az ad app federated-credential create \
   --id <appId> \
-  --parameters '{"name":"github-actions-main","issuer":"https://token.actions.githubusercontent.com","subject":"repo:Reeceakhun/tf-aks-multienv-infra:ref:refs/heads/main","audiences":["api://AzureADTokenExchange"]}'
+  --parameters '{"name":"github-actions-main","issuer":"https://token.actions.githubusercontent.com","subject": "repo:Reeceakhun@84012952/tf-aks-multienv-infra@1338886149:ref:refs/heads/master","audiences":["api://AzureADTokenExchange"]}'
 ```
+> **Note:** always copy the exact `subject claim` value from a failed
+> `azure/login` run's log output rather than hand-constructing it — GitHub
+> includes numeric org/repo IDs in the token subject
+> (`owner@ownerID/repo@repoID`), which isn't obvious from documentation
+> examples alone.
 
 Confirm your repo's actual default branch before running this — `main` vs
 `master` mismatches (or GitHub's newer `owner@id/repo@id` subject format)
