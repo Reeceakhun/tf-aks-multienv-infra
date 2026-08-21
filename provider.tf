@@ -8,9 +8,11 @@ terraform {
     }
   }
 
-  # Remote state backend configured here in Commit 2 —
-  # left out for now so `terraform init` doesn't fail before
-  # the storage account actually exists.
+  backend "azurerm" {
+    resource_group_name  = "rg-tfstate"
+    storage_account_name = "tfstateaksmultienv"
+    container_name        = "tfstate"
+  }
 }
 
 provider "azurerm" {
