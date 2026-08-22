@@ -79,6 +79,31 @@ a `push`-triggered version of this check turned out to be a silent no-op
 on merge commits.
 
 
+## Pipeline: Plan & Apply
+
+`.github/workflows/terraform-plan-apply.yml` runs on push/PR to `master`,
+and supports manual dispatch with an environment selector.
+
+**`plan`** — runs on every push and PR
+1. Installs Terraform, initializes against the remote backend using a
+   per-environment state key (`-backend-config="key=dev.terraform.tfstate"`,
+   etc.)
+2. Runs `terraform plan` against the selected environment's `.tfvars`
+3. Uploads the exact plan output as a build artifact
+
+**`apply`** — runs only on pushes to `master`, never on PRs
+1. Downloads the *exact* plan artifact `plan` produced — does not
+   re-plan, so what gets applied is guaranteed to match what was
+   reviewed, not a fresh plan that could have drifted in between
+2. Applies it
+
+Both jobs authenticate the `azurerm` Terraform provider via OIDC directly
+(`ARM_USE_OIDC` + `ARM_CLIENT_ID`/`ARM_TENANT_ID`/`ARM_SUBSCRIPTION_ID`
+environment variables), independently of the `az` CLI session `azure/login`
+sets up — the `azurerm` provider's default CLI-based auth explicitly
+rejects Service-Principal-authenticated CLI sessions, so it needs its own,
+separate OIDC handshake.
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
@@ -96,8 +121,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-
-- [ ] Add a GitHub Actions plan/apply workflow, parameterized by environment
 - [ ] Add Infracost cost estimation as a PR check
 - [ ] Add GitHub Environments with required reviewers before staging/prod apply
 - [ ] Add PR-triggered ephemeral environments (provision on open, destroy on close)
@@ -133,3 +156,6 @@ the intended path, not a local `apply` against prod.
   Re-verified with a fresh test PR: `secrets-scan` correctly failed on the
   PR containing a planted secret, and correctly showed as skipped (not a
   hollow pass) on the subsequent merge to `master`.
+- **`terraform: command not found`** — the workflow never installed the
+  Terraform CLI; `azure/login` only sets up Azure CLI auth, not Terraform tooling. First fix attempt only added the setup step to the `apply`
+  job; `plan` (which runs first, and was the one actually failing) was still missing it. Caught by reading the full workflow file rather than assuming the first patch covered everything.
