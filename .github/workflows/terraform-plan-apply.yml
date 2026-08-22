@@ -92,3 +92,30 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply tfplan
+
+  cost-estimate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Generate Infracost cost estimate
+        run: |
+          infracost breakdown --path=. \
+            --terraform-var-file=environments/${{ env.ENVIRONMENT }}.tfvars \
+            --format=json \
+            --out-file=infracost.json
+
+      - name: Post cost estimate as PR comment
+        uses: infracost/actions/comment@v3
+        with:
+          path: infracost.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          behavior: update
