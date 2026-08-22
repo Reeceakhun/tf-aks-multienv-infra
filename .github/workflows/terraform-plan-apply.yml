@@ -96,26 +96,44 @@ jobs:
   cost-estimate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     env:
       ENVIRONMENT: dev
     steps:
-      - uses: actions/checkout@v4
-
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Generate Infracost cost estimate
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: '${{ github.event.pull_request.base.ref }}'
+
+      - name: Generate Infracost baseline
         run: |
           infracost breakdown --path=. \
             --terraform-var-file=environments/${{ env.ENVIRONMENT }}.tfvars \
             --format=json \
-            --out-file=infracost.json
+            --out-file=/tmp/infracost-base.json
 
-      - name: Post cost estimate as PR comment
-        uses: infracost/actions/comment@v3
-        with:
-          path: infracost.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          behavior: update
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Generate Infracost diff
+        run: |
+          infracost diff --path=. \
+            --terraform-var-file=environments/${{ env.ENVIRONMENT }}.tfvars \
+            --format=json \
+            --compare-to=/tmp/infracost-base.json \
+            --out-file=/tmp/infracost.json
+
+      - name: Post Infracost comment
+        run: |
+          infracost comment github --path=/tmp/infracost.json \
+            --repo=$GITHUB_REPOSITORY \
+            --github-token=${{ secrets.GITHUB_TOKEN }} \
+            --pull-request=${{ github.event.pull_request.number }} \
+            --behavior=update
