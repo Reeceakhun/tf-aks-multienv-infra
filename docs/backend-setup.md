@@ -100,3 +100,25 @@ az role assignment create \
   --role "Storage Blob Data Contributor" \
   --scope /subscriptions/<sub-id>/resourceGroups/rg-tfstate/providers/Microsoft.Storage/storageAccounts/tfstateaksmultienv
 ```
+
+## 6. Set up Infracost
+
+1. Sign up at [infracost.io](https://www.infracost.io) (free tier).
+2. Get your API key:
+```bash
+   infracost auth login
+```
+   (requires the Infracost CLI installed locally — `brew install infracost/tap/infracost` on Mac, or see infracost.io/docs for other platforms)
+
+   Alternatively, copy the API key directly from your Infracost dashboard
+   after signing up, without installing the CLI locally.
+
+3. Add it as a GitHub repo secret:
+
+   | Secret | Value |
+   |---|---|
+   | `INFRACOST_API_KEY` | your API key from step 2 |
+
+No Azure role assignment is needed for this one — Infracost estimates
+cost from the Terraform plan's *data* (resource types, sizes, regions),
+it doesn't query live Azure pricing APIs against your subscription.
