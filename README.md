@@ -104,6 +104,33 @@ sets up — the `azurerm` provider's default CLI-based auth explicitly
 rejects Service-Principal-authenticated CLI sessions, so it needs its own,
 separate OIDC handshake.
 
+## Approval gates
+
+`apply` is attached to a GitHub Environment matching whichever
+environment was targeted (`dev`, `staging`, or `prod`, selected via
+`workflow_dispatch`). `staging` and `prod` have a required reviewer
+configured; `dev` does not, so pushes to `master` apply to dev
+automatically, while staging/prod only ever change through a manual
+trigger that pauses for explicit approval.
+
+### OIDC subject formats
+
+Every distinct way this workflow's identity gets asserted to Azure AD
+produces a different token subject, and each one needs its own trusted
+federated credential — there's no wildcard match. Discovered these one
+`AADSTS700213` failure at a time rather than all at once:
+
+| Trigger | Subject format |
+|---|---|
+| Push to `master` | `repo:<owner>@<id>/<repo>@<id>:ref:refs/heads/master` |
+| Pull request | `repo:<owner>@<id>/<repo>@<id>:pull_request` |
+| Job attached to a GitHub Environment | `repo:<owner>@<id>/<repo>@<id>:environment:<name>` |
+
+Five federated credentials exist on this repo's App Registration as a
+result: one for push, one for pull_request, and one per environment
+(dev/staging/prod). A single "catch-all" credential isn't possible —
+each trigger type must be explicitly trusted.
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
@@ -121,8 +148,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Add Infracost cost estimation as a PR check
-- [ ] Add GitHub Environments with required reviewers before staging/prod apply
 - [ ] Add PR-triggered ephemeral environments (provision on open, destroy on close)
 - [ ] Add the reaper (terraform destroy via tags, prod opt-out via `ttl_minutes = 0`)
 - [ ] Add scheduled drift detection against prod
