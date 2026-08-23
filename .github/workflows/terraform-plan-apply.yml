@@ -21,6 +21,7 @@ permissions:
 jobs:
   plan:
     if: github.event_name != 'pull_request'
+    #
     runs-on: ubuntu-latest
     env:
       ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
@@ -62,6 +63,7 @@ jobs:
     needs: plan
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
     env:
       ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
@@ -93,7 +95,6 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply tfplan
-
   cost-estimate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
