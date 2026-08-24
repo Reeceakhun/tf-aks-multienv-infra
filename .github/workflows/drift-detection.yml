@@ -1,0 +1,55 @@
+name: Drift Detection (Prod)
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-drift:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: prod
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.5'
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="key=${ENVIRONMENT}.terraform.tfstate"
+
+      - name: Terraform Plan (detection only)
+        id: plan
+        run: |
+          set +e
+          terraform plan \
+            -var-file=environments/${ENVIRONMENT}.tfvars \
+            -detailed-exitcode \
+            -no-color \
+            -out=drift.tfplan
+          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Report drift
+        if: steps.plan.outputs.exitcode == '2'
+        run: |
+          echo "::warning::Drift detected in prod — terraform plan shows changes that were not applied through this pipeline."
+          terraform show -no-color drift.tfplan
