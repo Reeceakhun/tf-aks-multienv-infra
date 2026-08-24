@@ -148,7 +148,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Add PR-triggered ephemeral environments (provision on open, destroy on close)
 - [ ] Add the reaper (terraform destroy via tags, prod opt-out via `ttl_minutes = 0`)
 - [ ] Add scheduled drift detection against prod
 - [ ] Add a Conftest policy denying overly-broad role assignments
