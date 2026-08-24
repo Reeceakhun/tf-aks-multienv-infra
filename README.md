@@ -131,6 +131,28 @@ result: one for push, one for pull_request, and one per environment
 (dev/staging/prod). A single "catch-all" credential isn't possible —
 each trigger type must be explicitly trusted.
 
+
+## Reaper
+
+`.github/workflows/reaper.yml` runs on a 15-minute cron (plus manual
+dispatch), checking `dev` and `staging` — `prod` is structurally absent
+from the matrix, not just filtered at runtime, so no logic error could
+ever cause it to be destroyed.
+
+For each environment, it reads the resource group's `created-at` and
+`ttl-minutes` tags directly from Azure (not from Terraform state, so this
+works even if state is out of sync), computes age, and only runs
+`terraform destroy` — against that environment's correct backend state
+key — if the TTL has been exceeded. A `ttl-minutes` of `0` (prod's value)
+is treated as "never expire," a second, independent safeguard beyond
+prod's absence from the matrix.
+
+Verified end to end: confirmed the reaper correctly **skipped** a
+resource group at 10 of 20 allowed minutes, then correctly **destroyed**
+it once the TTL was exceeded — not just that the workflow ran without
+erroring.
+
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
@@ -148,7 +170,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Add the reaper (terraform destroy via tags, prod opt-out via `ttl_minutes = 0`)
 - [ ] Add scheduled drift detection against prod
 - [ ] Add a Conftest policy denying overly-broad role assignments
 - [ ] Automate `terraform-docs` generation in CI
