@@ -1,0 +1,82 @@
+name: Reap Expired Environments
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  reap:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, staging]
+      fail-fast: false
+    env:
+      ENVIRONMENT: ${{ matrix.environment }}
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_USE_OIDC: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.7.5'
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Check resource group age and TTL
+        id: check
+        run: |
+          RG="rg-app-${ENVIRONMENT}"
+          EXISTS=$(az group exists --name "$RG")
+
+          if [ "$EXISTS" = "false" ]; then
+            echo "expired=false" >> "$GITHUB_OUTPUT"
+            echo "$RG does not exist, nothing to check"
+            exit 0
+          fi
+
+          CREATED_AT=$(az group show --name "$RG" --query "tags.\"created-at\"" -o tsv)
+          TTL_MINUTES=$(az group show --name "$RG" --query "tags.\"ttl-minutes\"" -o tsv)
+
+          if [ "$TTL_MINUTES" = "0" ] || [ -z "$TTL_MINUTES" ]; then
+            echo "expired=false" >> "$GITHUB_OUTPUT"
+            echo "$RG has ttl-minutes=0 or unset — persistent, skipping"
+            exit 0
+          fi
+
+          NOW_EPOCH=$(date -u +%s)
+          CREATED_EPOCH=$(date -u -d "$CREATED_AT" +%s)
+          AGE_MINUTES=$(( (NOW_EPOCH - CREATED_EPOCH) / 60 ))
+
+          echo "$RG — age: ${AGE_MINUTES}m, ttl: ${TTL_MINUTES}m"
+
+          if [ "$AGE_MINUTES" -ge "$TTL_MINUTES" ]; then
+            echo "expired=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "expired=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Terraform Init
+        if: steps.check.outputs.expired == 'true'
+        run: |
+          terraform init \
+            -backend-config="key=${ENVIRONMENT}.terraform.tfstate"
+
+      - name: Terraform Destroy
+        if: steps.check.outputs.expired == 'true'
+        run: |
+          terraform destroy -auto-approve \
+            -var-file=environments/${ENVIRONMENT}.tfvars

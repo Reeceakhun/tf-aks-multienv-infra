@@ -8,6 +8,11 @@ resource "azurerm_resource_group" "main" {
     ttl-minutes = var.ttl_minutes
     managed-by  = "terraform"
   }
+  lifecycle {
+    ignore_changes = [
+      tags["created-at"],
+    ]
+  }
 }
 
 resource "azurerm_kubernetes_cluster" "main" {
