@@ -175,10 +175,9 @@ workloads, then delete the original. Without this, Terraform refuses the
 change outright rather than attempting something destructive silently.
 Fixed by adding `temporary_name_for_rotation = "temppool"` to the node
 pool block in `main.tf`.
-- **First real prod apply failed on a node pool property change** — see
-  the "Drift detection" section above for the full explanation; kept it
-  there rather than duplicated here since it's directly tied to that
-  testing effort.
+Verified end to end: manually added a tag to prod outside Terraform,
+confirmed the next drift-detection run correctly flagged it as a
+proposed change, then cleaned up.
 
 
 ## Running locally
@@ -198,7 +197,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Add scheduled drift detection against prod
 - [ ] Add a Conftest policy denying overly-broad role assignments
 - [ ] Automate `terraform-docs` generation in CI
 - [ ] Write `NOTES.md` and finish the README's architecture diagram + CV-claim mapping
@@ -232,3 +230,7 @@ the intended path, not a local `apply` against prod.
 - **`terraform: command not found`** — the workflow never installed the
   Terraform CLI; `azure/login` only sets up Azure CLI auth, not Terraform tooling. First fix attempt only added the setup step to the `apply`
   job; `plan` (which runs first, and was the one actually failing) was still missing it. Caught by reading the full workflow file rather than assuming the first patch covered everything.
+- **First real prod apply failed on a node pool property change** — see
+  the "Drift detection" section above for the full explanation; kept it
+  there rather than duplicated here since it's directly tied to that
+  testing effort.
