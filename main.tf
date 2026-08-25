@@ -27,6 +27,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     name       = "default"
     node_count = var.node_count
     vm_size    = var.node_vm_size
+    temporary_name_for_rotation = "temppool"
   }
 
   identity {
