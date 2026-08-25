@@ -152,6 +152,34 @@ resource group at 10 of 20 allowed minutes, then correctly **destroyed**
 it once the TTL was exceeded — not just that the workflow ran without
 erroring.
 
+## Drift detection
+
+`.github/workflows/drift-detection.yml` runs `terraform plan` against
+prod hourly, using `-detailed-exitcode` to distinguish "no changes" (exit
+0) from "changes found" (exit 2) from "error" (exit 1) — a plain
+`terraform plan` always exits 0 regardless of outcome, so this flag is
+what makes automated drift detection possible at all. If drift is found,
+it's surfaced as a warning annotation directly on the workflow run
+summary, without failing the job or attempting to auto-remediate.
+
+### A real node pool constraint hit while testing this
+
+Applying to prod for the first time (needed to have something real for
+drift detection to check against) failed with:
+`temporary_name_for_rotation must be specified when updating...
+default_node_pool.0.vm_size` (among other properties). This isn't a
+config mistake — AKS genuinely cannot change several `default_node_pool`
+properties in place; the provider requires an explicit
+`temporary_name_for_rotation` so it can create a temporary pool, migrate
+workloads, then delete the original. Without this, Terraform refuses the
+change outright rather than attempting something destructive silently.
+Fixed by adding `temporary_name_for_rotation = "temppool"` to the node
+pool block in `main.tf`.
+- **First real prod apply failed on a node pool property change** — see
+  the "Drift detection" section above for the full explanation; kept it
+  there rather than duplicated here since it's directly tied to that
+  testing effort.
+
 
 ## Running locally
 
