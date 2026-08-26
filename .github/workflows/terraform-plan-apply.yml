@@ -197,3 +197,18 @@ jobs:
 
       - name: Run policy check
         run: conftest test tfplan.json --policy policy/
+
+  docs-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render terraform docs and check for differences
+        uses: terraform-docs/gh-actions@v1.3.0
+        with:
+          working-dir: .
+          output-file: README.md
+          output-method: inject
+          git-push: false
+          fail-on-diff: true

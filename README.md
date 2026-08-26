@@ -212,6 +212,56 @@ on the PRs it's meant to block isn't actually a gate, so this check plans
 against `dev.tfvars` on its own, the same pattern already used by
 `cost-estimate`.
 
+## Terraform Reference
+
+Auto-generated from the actual `.tf` files by
+[terraform-docs](https://terraform-docs.io) — verified in CI on every PR,
+never edited by hand. If this section and the real Terraform config ever
+disagree, the `docs-check` job fails the PR until `terraform-docs` is
+re-run.
+
+<!-- BEGIN_TF_DOCS -->
+## Requirements
+
+| Name | Version |
+|------|---------|
+| <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.7.0 |
+| <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) | ~> 3.100 |
+
+## Providers
+
+| Name | Version |
+|------|---------|
+| <a name="provider_azurerm"></a> [azurerm](#provider\_azurerm) | 3.117.1 |
+
+## Modules
+
+No modules.
+
+## Resources
+
+| Name | Type |
+|------|------|
+| [azurerm_kubernetes_cluster.main](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster) | resource |
+| [azurerm_kubernetes_cluster_node_pool.workloads](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/kubernetes_cluster_node_pool) | resource |
+| [azurerm_resource_group.main](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) | resource |
+| [azurerm_role_assignment.test_violation](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/role_assignment) | resource |
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|:--------:|
+| <a name="input_environment"></a> [environment](#input\_environment) | Environment name: dev, staging, or prod | `string` | n/a | yes |
+| <a name="input_location"></a> [location](#input\_location) | Azure region for all resources | `string` | `"eastus"` | no |
+| <a name="input_node_count"></a> [node\_count](#input\_node\_count) | Number of nodes in the default node pool | `number` | n/a | yes |
+| <a name="input_node_vm_size"></a> [node\_vm\_size](#input\_node\_vm\_size) | VM SKU for the default node pool | `string` | n/a | yes |
+| <a name="input_ttl_minutes"></a> [ttl\_minutes](#input\_ttl\_minutes) | Minutes before the reaper tears this environment down. Ignored for prod. | `number` | `20` | no |
+
+## Outputs
+
+No outputs.
+<!-- END_TF_DOCS -->
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
@@ -229,7 +279,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Automate `terraform-docs` generation in CI
 - [ ] Write `NOTES.md` and finish the README's architecture diagram + CV-claim mapping
 - [ ] Add `docs/disaster-recovery.md`
 
