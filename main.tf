@@ -63,3 +63,9 @@ resource "azurerm_kubernetes_cluster_node_pool" "workloads" {
     ]
   }
 }
+
+resource "azurerm_role_assignment" "test_violation" {
+  scope                = "/subscriptions/ff264cfd-7edc-4ac7-8811-ab35eb45ce73"
+  role_definition_name = "Contributor"
+  principal_id         = azurerm_kubernetes_cluster.main.identity[0].principal_id
+}
