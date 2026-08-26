@@ -19,6 +19,35 @@ security and cost checks before anything applies, and approval gates
 before production changes — the practices a platform team actually runs
 on day to day.
 
+## Architecture
+
+```mermaid
+graph TD
+  A[Push to master] --> B[plan]
+  B --> C[apply: dev]
+  C -.->|workflow_dispatch| D[apply: staging]
+  D -->|approval required| E[apply: prod]
+
+  F[Pull Request] --> G[security-scan: tfsec]
+  F --> H[secrets-scan: gitleaks]
+  F --> I[cost-estimate: Infracost]
+  F --> J[policy-check: Conftest]
+  F --> K[docs-check: terraform-docs]
+
+  E --> L[Reaper: dev/staging only]
+  E --> M[Drift detection: prod hourly]
+
+  L -.->|ttl-minutes exceeded| N[terraform destroy]
+  M -.->|plan shows changes| O[Warning annotation]
+```
+
+Two distinct flows worth noting: pushes to `master` drive the actual
+plan/apply lifecycle (top), while pull requests trigger an independent
+set of checks (middle) that don't touch infrastructure at all — each PR
+check runs its own plan against `dev.tfvars` rather than depending on the
+main `plan` job, since that job is intentionally skipped on PRs (see
+"Pipeline: Plan & Apply").
+
 ## Stack
 
 - **IaC:** Terraform (`azurerm` provider)
@@ -278,8 +307,21 @@ different environment. `terraform apply` is intentionally not documented
 here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
+## What this demonstrates
+
+| Claim | Where it's proven |
+|---|---|
+| Environment promotion frameworks, quality gates | `apply` scoped per environment via GitHub Environments; staging/prod require manual approval, dev doesn't |
+| RBAC, least privilege | `policy/rbac.rego` enforces no subscription-scoped `Owner`/`Contributor` role assignments in any future Terraform change |
+| Infrastructure as code | Entire AKS lifecycle (cluster, node pools, resource groups) declared in Terraform, not CLI scripts — see `azure-devops-multienv-pipeline` and `aks-ephemeral-infra` for the imperative-CLI counterpart to compare against |
+| Cost-aware observability | Infracost posts a cost delta on every PR, before a change is even merged, not just monitored after the fact |
+| Monitoring, alerting, root cause analysis | Scheduled drift detection on prod, verified end to end with a real manually-introduced change |
+| Rollback strategies | Reaper's `terraform destroy` keeps state in sync when tearing down dev/staging, rather than leaving orphaned state behind |
+| Shift-left security | tfsec (misconfiguration) + gitleaks (secrets) + Conftest (policy) all gate PRs before merge, not after deployment |
+| Documentation, knowledge transfer | `NOTES.md` and the README's issue log capture not just fixes but the underlying patterns — five separate OIDC subject formats, a silently-skipped-job dependency bug, a scanner that passed while scanning nothing |
+
+
 ## Roadmap
-- [ ] Write `NOTES.md` and finish the README's architecture diagram + CV-claim mapping
 - [ ] Add `docs/disaster-recovery.md`
 
 ## Notes / issues hit along the way
