@@ -180,6 +180,38 @@ confirmed the next drift-detection run correctly flagged it as a
 proposed change, then cleaned up.
 
 
+## Policy as code
+
+`policy/rbac.rego` (evaluated via [Conftest](https://www.conftest.dev/))
+fails the pipeline if a Terraform plan proposes an `azurerm_role_assignment`
+granting `Owner` or `Contributor` at subscription scope rather than a
+resource group or narrower.
+
+This directly automates a finding made by hand elsewhere in this
+portfolio — [`reece-project`](https://github.com/Reeceakhun/reece-project)'s
+README documents a `roles/storage.admin` grant that was broader than
+necessary, caught on manual review. This policy exists so that class of
+issue is caught by CI on every plan, not dependent on a human remembering
+to check.
+
+**Scope, stated honestly:** no `azurerm_role_assignment` resources exist
+in this repo's Terraform config today — the pipeline's own identity was
+granted its role manually via `az`, outside Terraform, during initial
+setup (see `docs/backend-setup.md`). This policy is a guardrail against
+future changes to this codebase, not something that caught a live
+violation here. Verified it works by temporarily adding a
+subscription-scoped role assignment on a test branch, confirming the
+check failed with the expected deny message, then removing it without
+merging.
+
+`policy-check` generates its own Terraform plan independently rather than
+depending on the main `plan` job — `plan` is intentionally skipped on
+pull requests (see "Pipeline: Plan & Apply"), and a job depending on a
+skipped job is itself skipped by default. A policy gate that never runs
+on the PRs it's meant to block isn't actually a gate, so this check plans
+against `dev.tfvars` on its own, the same pattern already used by
+`cost-estimate`.
+
 ## Running locally
 
 Requires the remote backend and OIDC setup from
@@ -197,7 +229,6 @@ here yet — see Roadmap; applying via CI with approval gates in place is
 the intended path, not a local `apply` against prod.
 
 ## Roadmap
-- [ ] Add a Conftest policy denying overly-broad role assignments
 - [ ] Automate `terraform-docs` generation in CI
 - [ ] Write `NOTES.md` and finish the README's architecture diagram + CV-claim mapping
 - [ ] Add `docs/disaster-recovery.md`
