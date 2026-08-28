@@ -4,11 +4,9 @@ Terraform-managed AKS clusters across dev, staging, and prod, with a CI
 pipeline enforcing security scanning, cost gating, and approval gates
 before changes reach production.
 
-> **Status: in progress.** Core Terraform config (resource group, AKS
-> cluster, dedicated node pool) and per-environment `.tfvars` are in
-> place. CI pipeline, security scanning, cost gating, approval gates,
-> reaper, drift detection, and policy checks are being added next — see
-> [Roadmap](#roadmap).
+> **Status: complete.** Full pipeline, security scanning, cost gating,
+> approval gates, reaper, drift detection, policy checks, automated docs,
+> and a documented disaster recovery approach are all in place.
 
 ## Why this project
 
@@ -320,9 +318,11 @@ the intended path, not a local `apply` against prod.
 | Shift-left security | tfsec (misconfiguration) + gitleaks (secrets) + Conftest (policy) all gate PRs before merge, not after deployment |
 | Documentation, knowledge transfer | `NOTES.md` and the README's issue log capture not just fixes but the underlying patterns — five separate OIDC subject formats, a silently-skipped-job dependency bug, a scanner that passed while scanning nothing |
 
-
 ## Roadmap
-- [ ] Add `docs/disaster-recovery.md`
+Core infrastructure, pipeline, security/cost/policy checks, and
+documentation are all in place. See "What I'd change for production use"
+sections throughout (Approval gates, Policy as code,
+`docs/disaster-recovery.md`) for stated follow-ups rather than open work.
 
 ## Notes / issues hit along the way
 
